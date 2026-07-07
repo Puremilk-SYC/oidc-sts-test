@@ -1,4 +1,4 @@
-name: AssumeRoleWithOIDC
+name: Debug OIDC
 on:
   workflow_dispatch:
 
@@ -7,27 +7,30 @@ permissions:
   contents: read
 
 jobs:
-  assume-role:
+  debug:
     runs-on: ubuntu-latest
     steps:
-      - name: Get JWT and call STS via POST
+      - name: Debug STS
         run: |
-          set -e
-          echo "Requesting OIDC JWT..."
           JWT=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL" | jq -r '.value')
-          echo "JWT obtained, length: ${#JWT}"
-          echo "JWT preview: ${JWT:0:50}..."
+          echo "JWT len: ${#JWT}"
           
-          echo "Calling volcengine STS AssumeRoleWithOIDC via POST..."
-          RESP=$(curl -s -X POST "https://sts.volcengineapi.com/" \
-            --data-urlencode "Action=AssumeRoleWithOIDC" \
-            --data-urlencode "Version=2018-01-01" \
-            --data-urlencode "RoleTrn=trn:iam::2121573521:role/OIDCAdminRole2" \
-            --data-urlencode "OIDCProviderTrn=trn:iam::2121573521:oidc-provider/GHActions" \
-            --data-urlencode "RoleSessionName=GitHubAdmin" \
-            --data-urlencode "OIDCToken=$JWT")
+          # Decode and show JWT header/payload
+          echo "$JWT" | cut -d. -f1 | base64 -d 2>/dev/null | python3 -m json.tool 2>/dev/null || echo "no python"
+          echo "$JWT" | cut -d. -f2 | base64 -d 2>/dev/null | python3 -m json.tool 2>/dev/null || echo "no python"
           
-          echo "===STS_RESPONSE_B64==="
-          echo "$RESP" | base64 -w0
+          # URL encode the JWT
+          ENCODED_JWT=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$JWT', safe=''))" 2>/dev/null || echo "$JWT")
+          
+          # Try GET with URL-encoded JWT
+          URL="https://sts.volcengineapi.com/?Action=AssumeRoleWithOIDC&Version=2018-01-01&RoleTrn=trn:iam::2121573521:role/OIDCAdminRole2&OIDCProviderTrn=trn:iam::2121573521:oidc-provider/GHActions&RoleSessionName=GH&OIDCToken=${ENCODED_JWT}"
+          echo "URL length: ${#URL}"
+          
+          RESP=$(curl -s -w "\n%{http_code}" "$URL")
+          HTTP_CODE=$(echo "$RESP" | tail -1)
+          BODY=$(echo "$RESP" | head -n -1)
+          echo "HTTP: $HTTP_CODE"
+          echo "===RESP==="
+          echo "$BODY" | base64 -w0
           echo ""
-          echo "===END_STS_RESPONSE==="
+          echo "===END==="

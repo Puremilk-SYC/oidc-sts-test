@@ -10,13 +10,19 @@ jobs:
   get-oidc-token:
     runs-on: ubuntu-latest
     steps:
-      - name: Get OIDC Token from GitHub
+      - name: Get OIDC Token (Base64 Encoded)
         run: |
-          echo "=== OIDC_JWT_START ==="
-          curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL"
-          echo "=== OIDC_JWT_END ==="
+          TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL" | jq -r '.value')
+          echo "===OIDC_B64_START==="
+          echo "$TOKEN" | base64 -w0
+          echo ""
+          echo "===OIDC_B64_END==="
       
       - name: Output to summary
         run: |
           TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL" | jq -r '.value')
-          echo "$TOKEN" >> $GITHUB_STEP_SUMMARY
+          B64=$(echo "$TOKEN" | base64 -w0)
+          echo "## OIDC JWT Token (Base64)" >> $GITHUB_STEP_SUMMARY
+          echo '\`\`\`' >> $GITHUB_STEP_SUMMARY
+          echo "$B64" >> $GITHUB_STEP_SUMMARY
+          echo '\`\`\`' >> $GITHUB_STEP_SUMMARY
